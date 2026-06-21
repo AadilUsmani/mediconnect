@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id       String   @id @default(cuid())
+  email    String   @unique
+  name     String
+  role     String   // "patient", "doctor", "admin"
+  password String
+
+  doctor   Doctor?
+  patient  Patient?
+}
+
+model Doctor {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  photo           String?
+  specialization  String
+  licenseNumber   String
+  experience      Int
+  consultationFee Float
+  whatsapp        String
+  bio             String
+  rating          Float    @default(0.0)
+  totalReviews    Int      @default(0)
+  isActive        Boolean  @default(true)
+  joinedDate      DateTime @default(now())
+  schedule        String   // JSON string
+
+  bookings        Booking[]
+}
+
+model Patient {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id])
+  photo            String?
+  dateOfBirth      DateTime
+  gender           String
+  phone            String
+  emergencyContact String
+
+  bookings         Booking[]
+}
+
+model Booking {
+  id                String   @id @default(cuid())
+  patientId         String
+  patient           Patient  @relation(fields: [patientId], references: [id])
+  doctorId          String
+  doctor            Doctor   @relation(fields: [doctorId], references: [id])
+  date              String
+  time              String
+  reason            String
+  status            String
+  paymentScreenshot String?
+  fee               Float
+  createdAt         DateTime @default(now())
+}
