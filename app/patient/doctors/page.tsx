@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/lib/app-context';
 import { UserAvatar } from '@/components/user-avatar';
 import { Sidebar } from '@/components/sidebar';
@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { MapPin, Search, Settings, Calendar, Users, Clock, Star } from 'lucide-react';
 import { SPECIALIZATIONS } from '@/lib/mock-data';
 import { AuthGuard } from '@/components/auth-guard';
+import { getDoctors } from '@/app/actions/doctors';
 
 const patientLinks = [
   { label: 'Overview', href: '/patient/dashboard', icon: <Users className="w-4 h-4" /> },
@@ -17,8 +18,20 @@ const patientLinks = [
 ];
 
 export default function PatientDoctorsPage() {
-  const { doctors } = useApp();
+  const [doctors, setDoctors] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    async function fetchDocs() {
+      try {
+        const fetchedDoctors = await getDoctors();
+        setDoctors(fetchedDoctors);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    fetchDocs();
+  }, []);
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
 

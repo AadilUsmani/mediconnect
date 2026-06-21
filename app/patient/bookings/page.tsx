@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '@/lib/app-context';
 import { UserAvatar } from '@/components/user-avatar';
 import { Sidebar } from '@/components/sidebar';
 import { StatusBadge } from '@/components/status-badge';
 import { Calendar, Users, Clock, Settings, Upload, X, MapPin } from 'lucide-react';
 import { AuthGuard } from '@/components/auth-guard';
+import { getPatientBookings, updateBookingStatus } from '@/app/actions/bookings';
+import { getDoctors } from '@/app/actions/doctors';
 
 const patientLinks = [
   { label: 'Overview', href: '/patient/dashboard', icon: <Users className="w-4 h-4" /> },
@@ -16,25 +18,45 @@ const patientLinks = [
 ];
 
 export default function PatientBookingsPage() {
-  const { currentUser, getPatientBookings, updateBooking, doctors, showToast } = useApp();
+  const { currentUser, showToast } = useApp();
   const patientData = currentUser?.data as any;
-  const bookings = getPatientBookings(patientData?.id);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [uploadModal, setUploadModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState('');
 
-  const handleUploadPayment = (bookingId: string) => {
+  useEffect(() => {
+    async function fetchData() {
+      if (!patientData?.id) return;
+      try {
+        const [fetchedBookings, fetchedDoctors] = await Promise.all([
+          getPatientBookings(patientData.id),
+          getDoctors()
+        ]);
+        setBookings(fetchedBookings);
+        setDoctors(fetchedDoctors);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    fetchData();
+  }, [patientData?.id]);
+
+  const handleUploadPayment = async (bookingId: string) => {
     if (uploadedFile) {
-      updateBooking(bookingId, { status: 'payment-uploaded', paymentScreenshot: uploadedFile });
+      await updateBookingStatus(bookingId, { status: 'payment-uploaded', paymentScreenshot: uploadedFile });
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'payment-uploaded', paymentScreenshot: uploadedFile } : b));
       showToast('Payment screenshot uploaded successfully', 'success');
       setUploadModal(false);
       setUploadedFile('');
     }
   };
 
-  const handleCancelBooking = (bookingId: string) => {
+  const handleCancelBooking = async (bookingId: string) => {
     if (window.confirm('Are you sure you want to cancel this booking?')) {
-      updateBooking(bookingId, { status: 'cancelled' });
+      await updateBookingStatus(bookingId, { status: 'cancelled' });
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'cancelled' } : b));
       showToast('Booking cancelled', 'error');
     }
   };

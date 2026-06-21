@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/db';
 import * as argon2 from 'argon2';
+import { setSession, clearSession } from '@/lib/session';
 
 export async function registerUser(data: any) {
   try {
@@ -24,6 +25,14 @@ export async function registerUser(data: any) {
     // Password validation
     if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
       return { success: false, message: 'Password does not meet complexity requirements.' };
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { success: false, message: 'Invalid email format.' };
+    }
+    
+    if (!/^[a-zA-Z\s.-]+$/.test(name)) {
+      return { success: false, message: 'Name can only contain letters, spaces, dots, and hyphens.' };
     }
 
     // Hash password
@@ -68,6 +77,7 @@ export async function registerUser(data: any) {
       return user;
     });
 
+    await setSession({ id: newUser.id, role: newUser.role, name: newUser.name });
     return { success: true, user: { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role } };
 
   } catch (error: any) {
@@ -123,10 +133,16 @@ export async function loginUser(data: any) {
       };
     }
 
+    await setSession({ id: user.id, role: user.role, name: user.name });
     return { success: true, user: userData };
 
   } catch (error: any) {
     console.error('Login error:', error);
     return { success: false, message: 'An unexpected error occurred during login.' };
   }
+}
+
+export async function logoutUser() {
+  await clearSession();
+  return { success: true };
 }

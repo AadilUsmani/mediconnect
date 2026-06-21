@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '@/lib/app-context';
+import { getDoctorBookings, updateBookingStatus } from '@/app/actions/bookings';
 import { Sidebar } from '@/components/sidebar';
 import { StatusBadge } from '@/components/status-badge';
 import { Calendar, Users, Clock, Settings, Eye, CheckCircle, XCircle, DollarSign } from 'lucide-react';
@@ -16,20 +17,28 @@ const doctorLinks = [
 ];
 
 export default function DoctorAppointmentsPage() {
-  const { currentUser, getDoctorBookings, updateBooking, showToast } = useApp();
+  const { currentUser, showToast } = useApp();
   const doctorData = currentUser?.data as any;
-  const bookings = getDoctorBookings(doctorData?.id);
+  const [bookings, setBookings] = useState<any[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  const handleConfirmPayment = (bookingId: string) => {
-    updateBooking(bookingId, { status: 'confirmed' });
+  useEffect(() => {
+    if (doctorData?.id) {
+      getDoctorBookings(doctorData.id).then(setBookings);
+    }
+  }, [doctorData?.id]);
+
+  const handleConfirmPayment = async (bookingId: string) => {
+    await updateBookingStatus(bookingId, { status: 'confirmed' });
+    setBookings((prev) => prev.map((b) => (b.id === bookingId ? { ...b, status: 'confirmed' } : b)));
     showToast('Payment confirmed', 'success');
     setShowPaymentModal(false);
   };
 
-  const handleRejectPayment = (bookingId: string) => {
-    updateBooking(bookingId, { status: 'pending-payment' });
+  const handleRejectPayment = async (bookingId: string) => {
+    await updateBookingStatus(bookingId, { status: 'pending-payment' });
+    setBookings((prev) => prev.map((b) => (b.id === bookingId ? { ...b, status: 'pending-payment' } : b)));
     showToast('Payment rejected', 'error');
     setShowPaymentModal(false);
   };

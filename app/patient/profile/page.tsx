@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/sidebar';
 import { Calendar, Users, Clock, Settings, ArrowLeft, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { AuthGuard } from '@/components/auth-guard';
+import { updatePatientProfile } from '@/app/actions/patients';
 
 const patientLinks = [
   { label: 'Overview', href: '/patient/dashboard', icon: <Users className="w-4 h-4" /> },
@@ -16,7 +17,7 @@ const patientLinks = [
 ];
 
 export default function PatientProfilePage() {
-  const { currentUser, updatePatient, showToast } = useApp();
+  const { currentUser, showToast, setCurrentUser } = useApp();
   const patientData = currentUser?.data as any;
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -32,15 +33,18 @@ export default function PatientProfilePage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (patientData?.id) {
-      updatePatient(patientData.id, {
+      await updatePatientProfile(patientData.id, {
         name: formData.name,
         dateOfBirth: formData.dateOfBirth,
         gender: formData.gender as any,
         phone: formData.phone,
         emergencyContact: formData.emergencyContact,
       });
+      if (setCurrentUser && currentUser) {
+        setCurrentUser({ ...currentUser, data: { ...patientData, ...formData } });
+      }
       showToast('Profile updated', 'success');
       setEditing(false);
     }

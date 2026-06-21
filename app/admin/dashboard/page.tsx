@@ -1,11 +1,15 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useApp } from '@/lib/app-context';
 import { Sidebar } from '@/components/sidebar';
 import { BarChart3, Users, TrendingUp, Settings, Calendar, Check } from 'lucide-react';
 import { StatusBadge } from '@/components/status-badge';
 import { AuthGuard } from '@/components/auth-guard';
 import Link from 'next/link';
+import { getBookings } from '@/app/actions/bookings';
+import { getDoctors } from '@/app/actions/doctors';
+import { getPatients } from '@/app/actions/patients';
 
 const adminLinks = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: <TrendingUp className="w-4 h-4" /> },
@@ -16,7 +20,30 @@ const adminLinks = [
 ];
 
 export default function AdminDashboard() {
-  const { doctors, patients, bookings } = useApp();
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [d, p, b] = await Promise.all([
+          getDoctors(),
+          getPatients(),
+          getBookings()
+        ]);
+        setDoctors(d);
+        setPatients(p);
+        setBookings(b);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   const stats = [
     { label: 'Total Doctors', value: doctors.length, color: 'bg-blue-100 text-blue-600', icon: Users },

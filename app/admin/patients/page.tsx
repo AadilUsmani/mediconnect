@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '@/lib/app-context';
 import { UserAvatar } from '@/components/user-avatar';
 import { Sidebar } from '@/components/sidebar';
 import { Users, TrendingUp, BarChart3, Settings, Search, Trash2 } from 'lucide-react';
 import { AuthGuard } from '@/components/auth-guard';
+import { getPatients } from '@/app/actions/patients';
+import { getBookings } from '@/app/actions/bookings';
 
 const adminLinks = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: <TrendingUp className="w-4 h-4" /> },
@@ -16,16 +18,42 @@ const adminLinks = [
 ];
 
 export default function AdminPatientsPage() {
-  const { patients, getPatientBookings, removePatient, showToast } = useApp();
+  const { showToast } = useApp();
+  const [patients, setPatients] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [p, b] = await Promise.all([
+          getPatients(),
+          getBookings()
+        ]);
+        setPatients(p);
+        setBookings(b);
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const getPatientBookingsCount = (patientId: string) => {
+    return bookings.filter(b => b.patientId === patientId).length;
+  };
 
   const filtered = patients.filter((pat) =>
     pat.name.toLowerCase().includes(search.toLowerCase()) || pat.email.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleDeletePatient = (patientId: string) => {
-    removePatient(patientId);
+    // Fallback local deletion as no server action provided
+    setPatients(patients.filter(p => p.id !== patientId));
     showToast('Patient deleted', 'success');
     setDeleteConfirm(null);
   };
@@ -74,7 +102,7 @@ export default function AdminPatientsPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filtered.map((patient) => {
-                      const bookingCount = getPatientBookings(patient.id).length;
+                      const bookingCount = getPatientBookingsCount(patient.id);
                       return (
                         <tr key={patient.id} className="hover:bg-gray-50 transition">
                           <td className="px-6 py-4">

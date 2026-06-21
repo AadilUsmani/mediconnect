@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useApp } from '@/lib/app-context';
 import { Shield, Menu, X } from 'lucide-react';
+import { UserAvatar } from '@/components/user-avatar';
 import { useState } from 'react';
 
 interface SidebarLink {
@@ -72,10 +73,13 @@ export function Sidebar({
 
         {/* User Info & Logout */}
         <div className="border-t border-gray-100 pt-6 space-y-4">
-          <div className="text-sm">
-            <p className="text-gray-600">Logged in as</p>
-            <p className="font-semibold text-gray-900">{currentUser?.name || currentUser?.email}</p>
-            <p className="text-xs text-gray-500 capitalize mt-1">{currentUser?.role}</p>
+          <div className="flex items-center gap-3">
+            {currentUser?.name && <UserAvatar name={currentUser.name} />}
+            <div className="text-sm">
+              <p className="text-gray-600">Logged in as</p>
+              <p className="font-semibold text-gray-900">{currentUser?.name || currentUser?.email}</p>
+              <p className="text-xs text-gray-500 capitalize mt-1">{currentUser?.role}</p>
+            </div>
           </div>
           <button
             onClick={handleLogout}

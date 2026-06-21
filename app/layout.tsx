@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { AppProvider } from '@/lib/app-context'
+import { getSession } from '@/lib/session'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({
@@ -41,15 +42,16 @@ export const viewport: Viewport = {
   ],
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const session = await getSession();
   return (
     <html lang="en" suppressHydrationWarning className={`bg-background ${geistSans.variable} ${geistMono.variable}`}>
       <body className="font-sans antialiased bg-background">
-        <AppProvider>
+        <AppProvider initialSession={session}>
           {children}
           {process.env.NODE_ENV === 'production' && <Analytics />}
         </AppProvider>

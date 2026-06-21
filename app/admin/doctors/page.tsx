@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '@/lib/app-context';
 import { UserAvatar } from '@/components/user-avatar';
 import { Sidebar } from '@/components/sidebar';
 import { Users, TrendingUp, BarChart3, Settings, Search, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { AuthGuard } from '@/components/auth-guard';
+import { getDoctors, updateDoctorProfile } from '@/app/actions/doctors';
 
 const adminLinks = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: <TrendingUp className="w-4 h-4" /> },
@@ -16,22 +17,44 @@ const adminLinks = [
 ];
 
 export default function AdminDoctorsPage() {
-  const { doctors, updateDoctor, removeDoctor, showToast } = useApp();
+  const { showToast } = useApp();
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const d = await getDoctors();
+        setDoctors(d);
+      } catch (error) {
+        console.error('Failed to load doctors:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   const filtered = doctors.filter((doc) =>
     doc.name.toLowerCase().includes(search.toLowerCase()) ||
     doc.specialization.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleToggleStatus = (doctorId: string, isActive: boolean) => {
-    updateDoctor(doctorId, { isActive: !isActive });
-    showToast(isActive ? 'Doctor suspended' : 'Doctor activated', 'success');
+  const handleToggleStatus = async (doctorId: string, isActive: boolean) => {
+    try {
+      await updateDoctorProfile(doctorId, { isActive: !isActive });
+      setDoctors(doctors.map(d => d.id === doctorId ? { ...d, isActive: !isActive } : d));
+      showToast(isActive ? 'Doctor suspended' : 'Doctor activated', 'success');
+    } catch (error) {
+      showToast('Failed to toggle status', 'error');
+    }
   };
 
   const handleDeleteDoctor = (doctorId: string) => {
-    removeDoctor(doctorId);
+    // Fallback local deletion as no server action provided
+    setDoctors(doctors.filter(d => d.id !== doctorId));
     showToast('Doctor deleted', 'success');
     setDeleteConfirm(null);
   };

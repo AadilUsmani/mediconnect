@@ -1,6 +1,8 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useApp } from '@/lib/app-context';
+import { getDoctorBookings } from '@/app/actions/bookings';
 import { Sidebar } from '@/components/sidebar';
 import { Calendar, Users, Clock, Settings, TrendingUp, DollarSign } from 'lucide-react';
 import { AuthGuard } from '@/components/auth-guard';
@@ -14,9 +16,15 @@ const doctorLinks = [
 ];
 
 export default function DoctorEarningsPage() {
-  const { currentUser, getDoctorBookings } = useApp();
+  const { currentUser } = useApp();
   const doctorData = currentUser?.data as any;
-  const bookings = getDoctorBookings(doctorData?.id);
+  const [bookings, setBookings] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (doctorData?.id) {
+      getDoctorBookings(doctorData.id).then(setBookings);
+    }
+  }, [doctorData?.id]);
 
   const confirmedBookings = bookings.filter((b) => b.status === 'confirmed' || b.status === 'completed');
   const totalEarnings = confirmedBookings.reduce((sum, b) => sum + b.fee, 0);

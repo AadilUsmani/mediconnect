@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useApp } from '@/lib/app-context';
+import { updateDoctorProfile } from '@/app/actions/doctors';
 import { Sidebar } from '@/components/sidebar';
 import { Calendar, Users, Clock, Settings, X, Plus, DollarSign } from 'lucide-react';
 import { AuthGuard } from '@/components/auth-guard';
@@ -18,7 +19,7 @@ const doctorLinks = [
 ];
 
 export default function DoctorSchedulePage() {
-  const { currentUser, addDoctorSchedule, updateDoctor, showToast } = useApp();
+  const { currentUser, showToast, setCurrentUser } = useApp();
   const doctorData = currentUser?.data as any;
   const [slotDuration, setSlotDuration] = useState('30');
   const [selectedDays, setSelectedDays] = useState<string[]>(['Monday', 'Wednesday', 'Friday']);
@@ -78,10 +79,18 @@ export default function DoctorSchedulePage() {
     });
   };
 
-  const handleSaveSchedule = () => {
+  const handleSaveSchedule = async () => {
     if (doctorData?.id) {
-      addDoctorSchedule(doctorData.id, schedule);
-      showToast('Schedule saved successfully', 'success');
+      const res = await updateDoctorProfile(doctorData.id, { schedule });
+      if (res.success) {
+        setCurrentUser({
+          ...currentUser,
+          data: { ...doctorData, schedule }
+        });
+        showToast('Schedule saved successfully', 'success');
+      } else {
+        showToast('Failed to save schedule', 'error');
+      }
     }
   };
 

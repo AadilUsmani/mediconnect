@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '@/lib/app-context';
 import { Sidebar } from '@/components/sidebar';
 import { Users, TrendingUp, BarChart3, Settings, Search, Eye } from 'lucide-react';
 import { StatusBadge } from '@/components/status-badge';
 import { AuthGuard } from '@/components/auth-guard';
+import { getBookings, updateBookingStatus } from '@/app/actions/bookings';
+import { getDoctors } from '@/app/actions/doctors';
+import { getPatients } from '@/app/actions/patients';
 
 const adminLinks = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: <TrendingUp className="w-4 h-4" /> },
@@ -16,11 +19,35 @@ const adminLinks = [
 ];
 
 export default function AdminAppointmentsPage() {
-  const { bookings, doctors, patients, updateBooking, showToast } = useApp();
+  const { showToast } = useApp();
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [b, d, p] = await Promise.all([
+          getBookings(),
+          getDoctors(),
+          getPatients()
+        ]);
+        setBookings(b);
+        setDoctors(d);
+        setPatients(p);
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   const filtered = bookings.filter((booking) => {
     const matchesSearch = booking.id.toLowerCase().includes(search.toLowerCase());
@@ -28,9 +55,14 @@ export default function AdminAppointmentsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleStatusChange = (bookingId: string, newStatus: string) => {
-    updateBooking(bookingId, { status: newStatus as any });
-    showToast('Status updated', 'success');
+  const handleStatusChange = async (bookingId: string, newStatus: string) => {
+    try {
+      await updateBookingStatus(bookingId, { status: newStatus as any });
+      setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+      showToast('Status updated', 'success');
+    } catch (error) {
+      showToast('Failed to update status', 'error');
+    }
   };
 
   return (

@@ -1,26 +1,48 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useApp } from '@/lib/app-context';
 import { UserAvatar } from '@/components/user-avatar';
 import Link from 'next/link';
 import { Calendar, Users, Clock, Settings, Star, ArrowLeft, Share2, Heart, MapPin } from 'lucide-react';
 import { AuthGuard } from '@/components/auth-guard';
+import { getDoctorById } from '@/app/actions/doctors';
+import { createBooking } from '@/app/actions/bookings';
 
 export default function DoctorProfilePage() {
   const params = useParams();
   const router = useRouter();
-  const { doctors, currentUser, createBooking, showToast } = useApp();
+  const { currentUser, showToast } = useApp();
   const doctorId = params.id as string;
-  const doctor = doctors.find((d) => d.id === doctorId);
   const patientData = currentUser?.data as any;
+
+  const [doctor, setDoctor] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSlot, setSelectedSlot] = useState('');
   const [reason, setReason] = useState('');
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [bookingStep, setBookingStep] = useState<'select' | 'confirm' | 'payment'>('select');
+
+  useEffect(() => {
+    async function fetchDoctor() {
+      try {
+        const doc = await getDoctorById(doctorId);
+        setDoctor(doc);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (doctorId) fetchDoctor();
+  }, [doctorId]);
+
+  if (loading) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
+  }
 
   if (!doctor) {
     return (
@@ -35,10 +57,10 @@ export default function DoctorProfilePage() {
     );
   }
 
-  const handleBooking = () => {
+  const handleBooking = async () => {
     if (selectedDate && selectedSlot && reason && patientData) {
       const bookingId = 'book-' + Date.now();
-      createBooking({
+      await createBooking({
         id: bookingId,
         patientId: patientData.id,
         doctorId: doctor.id,
@@ -56,7 +78,7 @@ export default function DoctorProfilePage() {
 
   const getAvailableSlots = (date: string) => {
     const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
-    return (doctor.schedule as any)[dayOfWeek] || [];
+    return (doctor.schedule as any)?.[dayOfWeek] || [];
   };
 
   const availableSlots = selectedDate ? getAvailableSlots(selectedDate) : [];

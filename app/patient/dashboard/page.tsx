@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/lib/app-context';
 import { UserAvatar } from '@/components/user-avatar';
@@ -7,6 +8,8 @@ import { Sidebar } from '@/components/sidebar';
 import { StatusBadge } from '@/components/status-badge';
 import { Calendar, Users, Clock, Settings, MapPin, Star, ArrowRight } from 'lucide-react';
 import { AuthGuard } from '@/components/auth-guard';
+import { getPatientBookings } from '@/app/actions/bookings';
+import { getDoctors } from '@/app/actions/doctors';
 
 const patientLinks = [
   { label: 'Overview', href: '/patient/dashboard', icon: <Users className="w-4 h-4" /> },
@@ -16,9 +19,27 @@ const patientLinks = [
 ];
 
 export default function PatientDashboard() {
-  const { currentUser, getPatientBookings, doctors } = useApp();
+  const { currentUser } = useApp();
   const patientData = currentUser?.data as any;
-  const bookings = getPatientBookings(patientData?.id);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!patientData?.id) return;
+      try {
+        const [fetchedBookings, fetchedDoctors] = await Promise.all([
+          getPatientBookings(patientData.id),
+          getDoctors()
+        ]);
+        setBookings(fetchedBookings);
+        setDoctors(fetchedDoctors);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    fetchData();
+  }, [patientData?.id]);
 
   const upcomingBookings = bookings
     .filter((b) => ['confirmed', 'payment-uploaded'].includes(b.status))

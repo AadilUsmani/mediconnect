@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useApp } from '@/lib/app-context';
+import { updateDoctorProfile } from '@/app/actions/doctors';
 import { UserAvatar } from '@/components/user-avatar';
 import { Sidebar } from '@/components/sidebar';
 import { SPECIALIZATIONS } from '@/lib/mock-data';
@@ -18,7 +19,7 @@ const doctorLinks = [
 ];
 
 export default function DoctorProfilePage() {
-  const { currentUser, updateDoctor, showToast } = useApp();
+  const { currentUser, showToast, setCurrentUser } = useApp();
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: currentUser?.name || '',
@@ -34,17 +35,28 @@ export default function DoctorProfilePage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (currentUser?.data) {
-      updateDoctor((currentUser.data as any).id, {
+      const updatedData = {
         name: formData.name,
         specialization: formData.specialization,
         experience: parseInt(formData.experience),
         consultationFee: parseInt(formData.consultationFee),
         whatsapp: formData.whatsapp,
         bio: formData.bio,
-      });
-      showToast('Profile updated', 'success');
+      };
+      
+      const res = await updateDoctorProfile((currentUser.data as any).id, updatedData);
+      if (res.success) {
+        setCurrentUser({
+          ...currentUser,
+          name: formData.name,
+          data: { ...(currentUser.data as any), ...updatedData }
+        });
+        showToast('Profile updated', 'success');
+      } else {
+        showToast('Failed to update profile', 'error');
+      }
       setEditing(false);
     }
   };

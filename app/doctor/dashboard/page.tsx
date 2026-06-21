@@ -1,6 +1,8 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useApp } from '@/lib/app-context';
+import { getDoctorBookings } from '@/app/actions/bookings';
 import { Sidebar } from '@/components/sidebar';
 import { Calendar, Users, DollarSign, Clock, Settings } from 'lucide-react';
 import Link from 'next/link';
@@ -15,9 +17,15 @@ const doctorLinks = [
 ];
 
 export default function DoctorDashboard() {
-  const { currentUser, getDoctorBookings, doctors } = useApp();
+  const { currentUser } = useApp();
   const doctorData = currentUser?.data as any;
-  const bookings = getDoctorBookings(doctorData?.id);
+  const [bookings, setBookings] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (doctorData?.id) {
+      getDoctorBookings(doctorData.id).then(setBookings);
+    }
+  }, [doctorData?.id]);
   const today = new Date().toISOString().split('T')[0];
   const todaysSessions = bookings.filter((b) => b.date === today && (b.status === 'confirmed' || b.status === 'completed')).length;
 
