@@ -1,8 +1,12 @@
 'use server';
 
 import { prisma } from '@/lib/db';
-import * as argon2 from 'argon2';
+import bcrypt from 'bcryptjs';
 import { setSession, clearSession } from '@/lib/session';
+
+// Hardcoded admin credentials (in production, store in env vars)
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@mediconnect.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin123!';
 
 export async function registerUser(data: any) {
   try {
@@ -11,6 +15,28 @@ export async function registerUser(data: any) {
     // Server-side validation
     if (!email || !password || !name || !role) {
       return { success: false, message: 'All fields are required.' };
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { success: false, message: 'Invalid email format.' };
+    }
+
+    if (!/^[a-zA-Z\s.-]+$/.test(name)) {
+      return { success: false, message: 'Name can only contain letters, spaces, dots, and hyphens.' };
+    }
+
+    // Password validation
+    if (
+      password.length < 8 ||
+      !/[A-Z]/.test(password) ||
+      !/[0-9]/.test(password) ||
+      !/[!@#$%^&*(),.?":{}|<>]/.test(password)
+    ) {
+      return {
+        success: false,
+        message:
+          'Password must be at least 8 characters, include an uppercase letter, a number, and a special character.',
+      };
     }
 
     // Check if user exists
@@ -22,21 +48,8 @@ export async function registerUser(data: any) {
       return { success: false, message: 'An account with this email already exists.' };
     }
 
-    // Password validation
-    if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      return { success: false, message: 'Password does not meet complexity requirements.' };
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return { success: false, message: 'Invalid email format.' };
-    }
-    
-    if (!/^[a-zA-Z\s.-]+$/.test(name)) {
-      return { success: false, message: 'Name can only contain letters, spaces, dots, and hyphens.' };
-    }
-
     // Hash password
-    const hashedPassword = await argon2.hash(password);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create user and profile in a transaction
     const newUser = await prisma.$transaction(async (tx) => {
@@ -78,8 +91,10 @@ export async function registerUser(data: any) {
     });
 
     await setSession({ id: newUser.id, role: newUser.role, name: newUser.name });
-    return { success: true, user: { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role } };
-
+    return {
+      success: true,
+      user: { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role },
+    };
   } catch (error: any) {
     console.error('Registration error:', error);
     return { success: false, message: 'An unexpected error occurred during registration.' };
@@ -99,17 +114,17 @@ export async function loginUser(data: any) {
       include: {
         doctor: true,
         patient: true,
-      }
+      },
     });
 
     if (!user) {
-      return { success: false, message: 'Invalid credentials. User not found.' };
+      return { success: false, message: 'Invalid email or password.' };
     }
 
-    const validPassword = await argon2.verify(user.password, password);
+    const validPassword = await bcrypt.compare(password, user.password);
 
     if (!validPassword) {
-      return { success: false, message: 'Invalid credentials. Incorrect password.' };
+      return { success: false, message: 'Invalid email or password.' };
     }
 
     // Prepare response object matching frontend context needs
@@ -135,9 +150,39 @@ export async function loginUser(data: any) {
 
     await setSession({ id: user.id, role: user.role, name: user.name });
     return { success: true, user: userData };
-
   } catch (error: any) {
     console.error('Login error:', error);
+    return { success: false, message: 'An unexpected error occurred during login.' };
+  }
+}
+
+export async function loginAdmin(data: { email: string; password: string }) {
+  try {
+    const { email, password } = data;
+
+    if (!email || !password) {
+      return { success: false, message: 'Email and password are required.' };
+    }
+
+    if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+      return { success: false, message: 'Invalid admin credentials.' };
+    }
+
+    // Set a server-side session cookie for the admin
+    await setSession({ id: 'admin-1', role: 'admin', name: 'Administrator' });
+
+    return {
+      success: true,
+      user: {
+        id: 'admin-1',
+        email: ADMIN_EMAIL,
+        name: 'Administrator',
+        role: 'admin',
+        data: null,
+      },
+    };
+  } catch (error: any) {
+    console.error('Admin login error:', error);
     return { success: false, message: 'An unexpected error occurred during login.' };
   }
 }

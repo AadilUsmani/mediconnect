@@ -18,30 +18,41 @@ export async function middleware(request: NextRequest) {
       });
       role = (payload.user as any)?.role || null;
     } catch (error) {
+      // Invalid or expired token — treat as unauthenticated
       console.error('Invalid token in middleware');
     }
   }
 
+  // Public paths (accessible without auth)
+  const isAdminLogin = pathname === '/admin/login';
+  const isDoctorOnboarding = pathname === '/doctor/onboarding';
+  const isPatientOnboarding = pathname === '/patient/onboarding';
+  const isLoginPage = pathname === '/login';
+
   // Paths requiring specific roles
-  const requireAdmin = pathname.startsWith('/admin') && !pathname.startsWith('/admin/login');
-  const requireDoctor = pathname.startsWith('/doctor') && !pathname.startsWith('/doctor/onboarding');
-  const requirePatient = pathname.startsWith('/patient') && !pathname.startsWith('/patient/onboarding');
+  const requireAdmin = pathname.startsWith('/admin') && !isAdminLogin;
+  const requireDoctor = pathname.startsWith('/doctor') && !isDoctorOnboarding;
+  const requirePatient = pathname.startsWith('/patient') && !isPatientOnboarding;
 
   // Redirection logic
   if (requireAdmin && role !== 'admin') {
-    return NextResponse.redirect(new URL(role ? `/${role}/dashboard` : '/admin/login', request.url));
+    return NextResponse.redirect(new URL('/admin/login', request.url));
   }
 
   if (requireDoctor && role !== 'doctor') {
-    return NextResponse.redirect(new URL(role ? `/${role}/dashboard` : '/login', request.url));
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   if (requirePatient && role !== 'patient') {
-    return NextResponse.redirect(new URL(role ? `/${role}/dashboard` : '/login', request.url));
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // If trying to access login while already authenticated
-  if ((pathname === '/login' || pathname === '/admin/login') && role) {
+  // If already authenticated, don't show login pages
+  if (isAdminLogin && role === 'admin') {
+    return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+  }
+
+  if (isLoginPage && role) {
     return NextResponse.redirect(new URL(`/${role}/dashboard`, request.url));
   }
 
@@ -53,6 +64,6 @@ export const config = {
     '/admin/:path*',
     '/doctor/:path*',
     '/patient/:path*',
-    '/login'
+    '/login',
   ],
 };

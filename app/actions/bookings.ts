@@ -4,12 +4,14 @@ import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
 export async function getBookings() {
-  const bookings = await prisma.booking.findMany();
-  return bookings.map(b => ({
+  const bookings = await prisma.booking.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
+  return bookings.map((b) => ({
     id: b.id,
     patientId: b.patientId,
     doctorId: b.doctorId,
-    date: b.date.toISOString().split('T')[0],
+    date: b.date, // already a String in schema
     time: b.time,
     reason: b.reason,
     status: b.status,
@@ -22,12 +24,13 @@ export async function getBookings() {
 export async function getPatientBookings(patientId: string) {
   const bookings = await prisma.booking.findMany({
     where: { patientId },
+    orderBy: { createdAt: 'desc' },
   });
-  return bookings.map(b => ({
+  return bookings.map((b) => ({
     id: b.id,
     patientId: b.patientId,
     doctorId: b.doctorId,
-    date: b.date.toISOString().split('T')[0],
+    date: b.date, // already a String in schema
     time: b.time,
     reason: b.reason,
     status: b.status,
@@ -40,12 +43,13 @@ export async function getPatientBookings(patientId: string) {
 export async function getDoctorBookings(doctorId: string) {
   const bookings = await prisma.booking.findMany({
     where: { doctorId },
+    orderBy: { createdAt: 'desc' },
   });
-  return bookings.map(b => ({
+  return bookings.map((b) => ({
     id: b.id,
     patientId: b.patientId,
     doctorId: b.doctorId,
-    date: b.date.toISOString().split('T')[0],
+    date: b.date, // already a String in schema
     time: b.time,
     reason: b.reason,
     status: b.status,
@@ -60,17 +64,20 @@ export async function createBooking(data: any) {
     data: {
       patientId: data.patientId,
       doctorId: data.doctorId,
-      date: new Date(data.date),
+      date: data.date, // store as string directly (schema field is String)
       time: data.time,
       reason: data.reason,
       status: data.status || 'pending-payment',
       fee: data.fee,
-      paymentScreenshot: data.paymentScreenshot,
-    }
+      paymentScreenshot: data.paymentScreenshot || null,
+    },
   });
   revalidatePath('/patient/bookings');
   revalidatePath('/doctor/appointments');
-  return booking;
+  return {
+    ...booking,
+    createdAt: booking.createdAt.toISOString(),
+  };
 }
 
 export async function updateBookingStatus(id: string, updates: any) {
@@ -79,10 +86,13 @@ export async function updateBookingStatus(id: string, updates: any) {
     data: {
       status: updates.status,
       paymentScreenshot: updates.paymentScreenshot,
-    }
+    },
   });
   revalidatePath('/patient/bookings');
   revalidatePath('/doctor/appointments');
   revalidatePath('/admin/dashboard');
-  return booking;
+  return {
+    ...booking,
+    createdAt: booking.createdAt.toISOString(),
+  };
 }

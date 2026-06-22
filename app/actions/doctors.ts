@@ -7,7 +7,7 @@ export async function getDoctors() {
   const doctors = await prisma.doctor.findMany({
     include: { user: true },
   });
-  return doctors.map(d => ({
+  return doctors.map((d) => ({
     id: d.userId,
     name: d.user.name,
     email: d.user.email,
@@ -18,12 +18,11 @@ export async function getDoctors() {
     whatsapp: d.whatsapp,
     bio: d.bio,
     schedule: JSON.parse(d.schedule || '{}'),
-    // Defaults for UI
-    photo: '', 
-    rating: 0,
-    totalReviews: 0,
-    isActive: true,
-    joinedDate: new Date().toISOString(),
+    photo: d.photo || '',
+    rating: d.rating,
+    totalReviews: d.totalReviews,
+    isActive: d.isActive,
+    joinedDate: d.joinedDate.toISOString(),
   }));
 }
 
@@ -32,9 +31,9 @@ export async function getDoctorById(id: string) {
     where: { userId: id },
     include: { user: true },
   });
-  
+
   if (!doctor) return null;
-  
+
   return {
     id: doctor.userId,
     name: doctor.user.name,
@@ -46,34 +45,37 @@ export async function getDoctorById(id: string) {
     whatsapp: doctor.whatsapp,
     bio: doctor.bio,
     schedule: JSON.parse(doctor.schedule || '{}'),
-    photo: '',
-    rating: 0,
-    totalReviews: 0,
-    isActive: true,
+    photo: doctor.photo || '',
+    rating: doctor.rating,
+    totalReviews: doctor.totalReviews,
+    isActive: doctor.isActive,
   };
 }
 
 export async function updateDoctorProfile(id: string, updates: any) {
+  const doctorUpdateData: any = {};
+
+  if (updates.specialization !== undefined) doctorUpdateData.specialization = updates.specialization;
+  if (updates.licenseNumber !== undefined) doctorUpdateData.licenseNumber = updates.licenseNumber;
+  if (updates.experience !== undefined) doctorUpdateData.experience = updates.experience;
+  if (updates.consultationFee !== undefined) doctorUpdateData.consultationFee = updates.consultationFee;
+  if (updates.whatsapp !== undefined) doctorUpdateData.whatsapp = updates.whatsapp;
+  if (updates.bio !== undefined) doctorUpdateData.bio = updates.bio;
+  if (updates.isActive !== undefined) doctorUpdateData.isActive = updates.isActive;
+  if (updates.schedule !== undefined) doctorUpdateData.schedule = JSON.stringify(updates.schedule);
+
   const doctor = await prisma.doctor.update({
     where: { userId: id },
-    data: {
-      specialization: updates.specialization,
-      licenseNumber: updates.licenseNumber,
-      experience: updates.experience,
-      consultationFee: updates.consultationFee,
-      whatsapp: updates.whatsapp,
-      bio: updates.bio,
-      schedule: updates.schedule ? JSON.stringify(updates.schedule) : undefined,
-    },
+    data: doctorUpdateData,
   });
 
   if (updates.name || updates.email) {
     await prisma.user.update({
       where: { id },
       data: {
-        name: updates.name,
-        email: updates.email,
-      }
+        ...(updates.name && { name: updates.name }),
+        ...(updates.email && { email: updates.email }),
+      },
     });
   }
 

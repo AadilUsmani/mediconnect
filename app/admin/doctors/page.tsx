@@ -60,7 +60,7 @@ export default function AdminDoctorsPage() {
   };
 
   return (
-    <AuthGuard allowedRoles={['admin']} redirectTo="/login">
+    <AuthGuard allowedRoles={['admin']} redirectTo="/admin/login">
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar links={adminLinks} title="Admin Dashboard" />
 

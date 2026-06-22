@@ -66,7 +66,7 @@ export default function AdminDashboard() {
     .slice(0, 5);
 
   return (
-    <AuthGuard allowedRoles={['admin']} redirectTo="/login">
+    <AuthGuard allowedRoles={['admin']} redirectTo="/admin/login">
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar links={adminLinks} title="Admin Dashboard" />
 

@@ -5,10 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/app-context';
 import { Shield, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-
-// Hardcoded admin credentials
-const ADMIN_EMAIL = 'admin@mediconnect.com';
-const ADMIN_PASSWORD = 'admin123';
+import { loginAdmin } from '@/app/actions/auth';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -23,17 +20,18 @@ export default function AdminLoginPage() {
     setError('');
     setLoading(true);
 
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      setCurrentUser({
-        id: 'admin-1',
-        email: ADMIN_EMAIL,
-        name: 'Administrator',
-        role: 'admin',
-        data: null,
-      });
-      router.push('/admin/dashboard');
-    } else {
-      setError('Invalid email or password');
+    try {
+      const result = await loginAdmin({ email, password });
+      if (result.success && result.user) {
+        setCurrentUser(result.user);
+        router.push('/admin/dashboard');
+        router.refresh();
+      } else {
+        setError(result.message || 'Login failed.');
+        setLoading(false);
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
       setLoading(false);
     }
   };
@@ -103,7 +101,7 @@ export default function AdminLoginPage() {
               <span className="font-medium">Email:</span> admin@mediconnect.com
             </p>
             <p className="text-sm text-blue-800">
-              <span className="font-medium">Password:</span> admin123
+              <span className="font-medium">Password:</span> Admin123!
             </p>
           </div>
 
